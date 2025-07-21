@@ -78,14 +78,11 @@ Please use _get_quant_packages_from_picking instead."
             return super().attach_shipping_label(label)
         self.ensure_one()
         data = self.get_shipping_label_values(label)
-        context_attachment = self.env.context.copy()
-        # remove default_type setted for stock_picking
+        # remove `default_type` set for stock_picking
         # as it would try to define default value of attachement
-        if "default_type" in context_attachment:
-            del context_attachment["default_type"]
-        return (
-            self.env["shipping.label"].with_context(**context_attachment).create(data)
-        )
+        if self.env.context.get("default_type"):
+            self = self.with_context(default_type=None)
+        return self.env["shipping.label"].create(data)
 
     def postlogistics_cod_amount(self):
         """Return the PostLogistics Cash on Delivery amount of a picking
