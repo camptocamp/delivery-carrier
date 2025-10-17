@@ -24,19 +24,44 @@ class DeliveryCarrier(models.Model):
         "The provider's cost is ignored.",
     )
 
-    def rate_shipment(self, order):
-        if self.invoice_policy == "pricelist":
-            # Force computation from pricelist based on invoicing policy
-            # Required since core's `rate_shipment` relies on `self.delivery_type`
-            # to lookup for the right handler.
-            # using a 'temp record' with new() won't work since it has NewId
-            # and rate_shipment() compares those
-            tmp_type = self.delivery_type
-            self.delivery_type = "pricelist"
-            result = super().rate_shipment(order)
-            self.delivery_type = tmp_type
-            return result
-        return super().rate_shipment(order)
+    def __getattribute__(self, item):
+        # OVERRIDE: in case ``invoice_policy`` is set as "pricelist", we want to use
+        # method ``pricelist_rate_shipment`` to retrieve the proper prices. However,
+        # Odoo uses ``getattr(self, '%s_rate_shipment' % self.delivery_type)`` in its
+        # base method ``rate_shipment()`` to lookup which function to use.
+        # The 3 previous solutions were:
+        #   1) use ``new()`` to create a temporary record with ``delivery_type`` set to
+        #      pricelist => failed because comparisons among stored records and virtual
+        #      records failed (eg: carrier's and shipping partner's countries comparison
+        #      in ``_match_address()`` failed because virtual record's countries were
+        #      assigned ``NewId`` objects instead of real ``IDs``, leading to a failure
+        #      even if the countries were actually the same)
+        #   2) temporarily change the ``delivery_type`` to "pricelist", compute the
+        #      prices, then revert the ``delivery_type`` to its old value: that caused
+        #      an ``AccessError`` if the user didn't have ``write`` access on
+        #      ``delivery.carrier``, even though the user had the permission of updating
+        #      the carrier on a SO w/ the proper wizard
+        #   3) just like 2), but with ``sudo()`` to prevent the ``AccessError``: when
+        #      updating ``delivery_type``, Odoo triggers a series of recomputations that
+        #      will modify other fields, which is an unwanted side effect that cannot
+        #      always be reverted when ``delivery_type`` is reverted to its original
+        #      value (eg: see method ``_compute_can_generate_return()``)
+        # Overriding ``__getattribute__()`` might seem overkill, but it seems to be one
+        # of the few remaining feasible options.
+        if (
+            # ⚠️ The first check may seem redundant, given the other ones;
+            # however, without this, Python will crash with a ``RecursionError``,
+            # because it'll try to access the fields we need for the check, and before
+            # being able to read their value, it'll enter again the ``__getattribute__``
+            # override, so it'll try to access the fields we need for the check again,
+            # and so on, entering an infinite loophole
+            item.endswith("_rate_shipment")
+            and self.invoice_policy == "pricelist"
+            and (delivery_type := self.delivery_type) != "pricelist"
+            and item == f"{delivery_type}_rate_shipment"
+        ):
+            item = "pricelist_rate_shipment"
+        return super().__getattribute__(item)
 
     def send_shipping(self, pickings):
         result = super().send_shipping(pickings)
