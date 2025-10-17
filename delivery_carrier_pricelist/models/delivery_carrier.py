@@ -1,7 +1,12 @@
 # Copyright 2020 Camptocamp
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
+from logging import getLogger
+
 from odoo import api, fields, models
+from odoo.exceptions import AccessError
+
+_logger = getLogger(__name__)
 
 
 class DeliveryCarrier(models.Model):
@@ -25,18 +30,34 @@ class DeliveryCarrier(models.Model):
     )
 
     def rate_shipment(self, order):
-        if self.invoice_policy == "pricelist":
-            # Force computation from pricelist based on invoicing policy
-            # Required since core's `rate_shipment` relies on `self.delivery_type`
-            # to lookup for the right handler.
-            # using a 'temp record' with new() won't work since it has NewId
-            # and rate_shipment() compares those
-            tmp_type = self.delivery_type
-            self.delivery_type = "pricelist"
-            result = super().rate_shipment(order)
-            self.delivery_type = tmp_type
-            return result
-        return super().rate_shipment(order)
+        # OVERRIDE: in case ``invoice_policy`` is set as "pricelist", we want to use
+        # method ``pricelist_rate_shipment`` to retrieve the proper prices. However,
+        # Odoo uses ``getattr(self, '%s_rate_shipment' % self.delivery_type)`` in its
+        # base method ``rate_shipment()`` to lookup which function to use, so we
+        # temporarily change the ``delivery_type`` if needed.
+
+        # Quick check: if the invoice policy is not "pricelist", or the delivery type is
+        # already set to "pricelist", we don't have to do anything
+        if self.invoice_policy != "pricelist" or self.delivery_type == "pricelist":
+            return super().rate_shipment(order)
+
+        # Prevent ``AccessError`` if needed: by default, module ``delivery`` only allows
+        # Sales / Administrator users to have ``write`` access on ``delivery.carrier``,
+        # but lots of modules use this method, even for automations on ``sale.order``
+        # creation/updates (eg: module ``delivery_auto_refresh`` or OCA/sale-workflow
+        # ``sale_order_carrier_auto_assign``); therefore, if necessary, we go ``sudo()``
+        # before updating/reverting the delivery type on the carrier
+        try:
+            self.check_access("write")
+            carrier = self
+        except AccessError:
+            _logger.info(f"Get shipment rates in sudo() for user {self.env.uid}")
+            carrier = self.sudo()
+        delivery_type = carrier.delivery_type
+        carrier.delivery_type = "pricelist"
+        result = super(DeliveryCarrier, carrier).rate_shipment(order)
+        carrier.delivery_type = delivery_type
+        return result
 
     def send_shipping(self, pickings):
         result = super().send_shipping(pickings)
