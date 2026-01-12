@@ -4,4 +4,3 @@ openupgradelib
 roulier
 unidecode
 zeep
-PyPDF2
