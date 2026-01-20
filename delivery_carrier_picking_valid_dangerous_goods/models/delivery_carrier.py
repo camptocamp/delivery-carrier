@@ -7,7 +7,7 @@ class DeliveryCarrier(models.Model):
     _inherit = "delivery.carrier"
 
     adr_limited_amount_ids = fields.Many2many(
-        "limited.amount",
+        "adr.limited.amount",
         string="Restrict selection of preferred carrier for ADR limited amount",
         help="If a limited amount is defined here, this carrier will be "
         "excluded from the selection of preferred carrier on stock picking if "
@@ -23,6 +23,6 @@ class DeliveryCarrier(models.Model):
         # amounts of dangerous goods
         if limited_amounts := self.adr_limited_amount_ids:
             for product in picking.move_ids.product_id:
-                if product.limited_amount_id in limited_amounts:
+                if product.adr_limited_amount_id in limited_amounts:
                     return False
         return True
