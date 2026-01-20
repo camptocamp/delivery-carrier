@@ -1,0 +1,2 @@
+odoo-addon-stock_picking_volume @ git+https://github.com/OCA/stock-logistics-warehouse.git@refs/pull/2441/head#subdirectory=stock_picking_volume
+odoo-addon-product_dimension @ git+https://github.com/OCA/product-attribute.git@refs/pull/2089/head#subdirectory=product_dimension
