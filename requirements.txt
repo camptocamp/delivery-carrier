@@ -1,5 +1,6 @@
 # generated from manifests external_dependencies
 PyPDF2
+easypost==7.15.0
 openupgradelib
 roulier
 unidecode

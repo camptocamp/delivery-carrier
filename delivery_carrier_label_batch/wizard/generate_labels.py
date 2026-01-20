@@ -121,7 +121,7 @@ class DeliveryCarrierLabelGenerate(models.TransientModel):
         labels = []
         str_out = f"Labels generated for batch {batch.name}: \n"
         labels_out = []
-        for pack in batch.move_line_ids.result_package_id:
+        for pack in batch.move_line_ids.result_package_id.sorted("parcel_tracking"):
             label = self._find_pack_label(pack)
             if not label:
                 continue
