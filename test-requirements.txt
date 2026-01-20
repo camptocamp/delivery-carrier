@@ -1,0 +1,5 @@
+odoo-addon-delivery_carrier_picking_valid @ git+https://github.com/OCA/delivery-carrier.git@refs/pull/1102/head#subdirectory=delivery_carrier_picking_valid
+odoo-addon-stock_picking_volume @ git+https://github.com/OCA/stock-logistics-warehouse.git@refs/pull/2441/head#subdirectory=stock_picking_volume
+odoo-addon-product_dimension @ git+https://github.com/OCA/product-attribute.git@refs/pull/2089/head#subdirectory=product_dimension
+odoo-addon-l10n_eu_product_adr_dangerous_goods @ git+https://github.com/OCA/community-data-files.git@refs/pull/259/head#subdirectory=l10n_eu_product_adr_dangerous_goods
+odoo-addon-l10n_eu_product_adr @ git+https://github.com/OCA/community-data-files.git@refs/pull/258/head#subdirectory=l10n_eu_product_adr
