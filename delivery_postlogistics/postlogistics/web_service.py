@@ -60,8 +60,6 @@ class PostlogisticsWebService:
 
     """
 
-    access_token = False
-    access_token_expiry = False
     _lock = threading.Lock()
 
     def __init__(self, company):
@@ -189,14 +187,15 @@ class PostlogisticsWebService:
             item_list.append(item)
 
         total_packages = len(packages)
-        for index, package in enumerate(packages):
-            package_number = picking.get_package_number_hook(package)
-            if not package_number:
-                package_number = index + 1
-            attributes = picking.postlogistics_label_prepare_attributes(
-                pack=package, pack_num=package_number, pack_total=total_packages
-            )
-            add_item(package_number, package=package)
+        if packages:
+            for index, package in enumerate(packages):
+                package_number = picking.get_package_number_hook(package)
+                if not package_number:
+                    package_number = index + 1
+                attributes = picking.postlogistics_label_prepare_attributes(
+                    pack=package, pack_num=package_number, pack_total=total_packages
+                )
+                add_item(package_number, package=package)
         else:
             attributes = picking.postlogistics_label_prepare_attributes()
             add_item()
@@ -266,6 +265,15 @@ class PostlogisticsWebService:
                 )
             )
 
+        sql = (
+            f"SELECT id FROM {delivery_carrier._table} WHERE ID = %s FOR UPDATE NOWAIT"
+        )
+
+        # this may raise an OperationalError if the lock cannot be acquired
+        delivery_carrier.env.cr.execute(
+            sql, (delivery_carrier.id,), log_exceptions=False
+        )
+
         response = requests.post(
             url=authentication_url,
             headers={"content-type": "application/x-www-form-urlencoded"},
@@ -298,19 +306,32 @@ class PostlogisticsWebService:
     @classmethod
     def get_access_token(cls, picking_carrier):
         """Threadsafe access to token"""
+
         with cls._lock:
             now = datetime.now()
 
-            if cls.access_token:
+            # ensure token exists and is not expired
+            if (
+                picking_carrier.sudo().postlogistics_token
+                and picking_carrier.sudo().postlogistics_token_expiry
+            ):
                 # keep a safe margin on the expiration
-                expiry = cls.access_token_expiry - timedelta(seconds=5)
+                expiry = picking_carrier.sudo().postlogistics_token_expiry - timedelta(
+                    seconds=5
+                )
                 if now < expiry:
-                    return cls.access_token
+                    return picking_carrier.sudo().postlogistics_token
 
+            # obtain a new token if needed
             response = cls._request_access_token(picking_carrier)
-            cls.access_token = response.get("access_token", False)
+            picking_carrier.sudo().postlogistics_token = response.get(
+                "access_token", False
+            )
+            picking_carrier.sudo().postlogistics_token_expiry = now + timedelta(
+                seconds=response["expires_in"]
+            )
 
-            if not (cls.access_token):
+            if not (picking_carrier.sudo().postlogistics_token):
                 raise UserError(
                     picking_carrier.env._(
                         "Authorization Required\n\n"
@@ -320,8 +341,10 @@ class PostlogisticsWebService:
                     )
                 )
 
-            cls.access_token_expiry = now + timedelta(seconds=response["expires_in"])
-            return cls.access_token
+            picking_carrier.sudo().postlogistics_token_expiry = now + timedelta(
+                seconds=response["expires_in"]
+            )
+            return picking_carrier.sudo().postlogistics_token
 
     def generate_label(self, picking, packages):
         """Generate a label for a picking
