@@ -86,9 +86,21 @@ class DeliveryCarrierLabelGenerate(models.TransientModel):
         try:
             picking.send_to_shipper()
         except OperationalError as oe:
-            _logger.error("Error sending to shipper: %s", oe.diag)
+            diag = getattr(oe, "diag", None)
+            message = str(oe)
+            if diag:
+                parts = []
+                for attr in ("message_primary", "detail", "hint", "context"):
+                    value = getattr(diag, attr, None)
+                    if value:
+                        parts.append(value)
+                if parts:
+                    message = " | ".join(parts)
+                else:
+                    message = message or repr(diag)
+            _logger.error("Error sending to shipper: %s", message)
             raise RetryableJobError(
-                oe.diag,
+                message,
                 seconds=3,
                 # ignore_retry=True,
             ) from oe
