@@ -9,7 +9,7 @@ from odoo.addons.stock_picking_delivery_package_type_domain.tests.common import 
 )
 
 
-class TestStockQuantPackageWrite(CommonChooseDeliveryPackage, BaseCommon):
+class TestStockQuantPackageConstraint(CommonChooseDeliveryPackage, BaseCommon):
     @classmethod
     def _create_package_for_picking_carrier(cls):
         sale = cls._create_sale()
@@ -31,7 +31,7 @@ class TestStockQuantPackageWrite(CommonChooseDeliveryPackage, BaseCommon):
         move_line.result_package_id = package
         return package, picking
 
-    def test_write_allows_package_type_without_dedicated_carrier(self):
+    def test_constraint_allows_package_type_without_dedicated_carrier(self):
         package, picking = self._create_package_for_picking_carrier()
         package_type = self.env["stock.package.type"].create(
             {
@@ -41,10 +41,9 @@ class TestStockQuantPackageWrite(CommonChooseDeliveryPackage, BaseCommon):
         )
 
         package.write({"package_type_id": package_type.id})
-
         self.assertEqual(package.package_type_id, package_type)
 
-    def test_write_rejects_package_type_for_another_dedicated_carrier(self):
+    def test_constraint_rejects_package_type_for_another_dedicated_carrier(self):
         package, picking = self._create_package_for_picking_carrier()
         other_carrier = self.env["delivery.carrier"].create(
             {
