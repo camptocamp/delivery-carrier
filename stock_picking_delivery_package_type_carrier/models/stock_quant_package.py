@@ -1,4 +1,4 @@
-from odoo import _, models
+from odoo import _, api, models
 from odoo.exceptions import ValidationError
 
 
@@ -36,9 +36,8 @@ class StockQuantPackage(models.Model):
                     }
                 )
 
-    def write(self, vals):
-        package_type_id = vals.get("package_type_id")
-        if package_type_id:
-            package_type = self.env["stock.package.type"].browse(package_type_id)
-            self._check_package_type_carrier_compatibility(package_type)
-        return super().write(vals)
+    @api.constrains("package_type_id")
+    def _check_package_type_id_carrier_compatibility(self):
+        for package in self:
+            if package_type := package.package_type_id:
+                package._check_package_type_carrier_compatibility(package_type)
