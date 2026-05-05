@@ -1,0 +1,1 @@
+odoo-addon-sale_order_carrier_auto_assign@git+https://github.com/OCA/sale-workflow.git@refs/pull/3933/head#subdirectory=sale_order_carrier_auto_assign
