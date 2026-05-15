@@ -10,24 +10,23 @@ from odoo.addons.stock_picking_delivery_package_type_domain.tests.common import 
 
 
 class TestStockQuantPackageConstraint(CommonChooseDeliveryPackage, BaseCommon):
-    @classmethod
-    def _create_package_for_picking_carrier(cls):
-        sale = cls._create_sale()
+    def _create_package_for_picking_carrier(self):
+        sale = self._create_sale()
         sale.action_confirm()
         picking = sale.picking_ids
 
-        move_line = cls.env["stock.move.line"].create(
+        move_line = self.env["stock.move.line"].create(
             {
-                "product_id": cls.product.id,
-                "product_uom_id": cls.product.uom_id.id,
+                "product_id": self.product.id,
+                "product_uom_id": self.product.uom_id.id,
                 "picking_id": picking.id,
                 "quantity": 1,
-                "location_id": cls.env.ref("stock.stock_location_stock").id,
-                "location_dest_id": cls.env.ref("stock.stock_location_customers").id,
+                "location_id": self.env.ref("stock.stock_location_stock").id,
+                "location_dest_id": self.env.ref("stock.stock_location_customers").id,
             }
         )
 
-        package = cls.env["stock.quant.package"].create({})
+        package = self.env["stock.quant.package"].create({})
         move_line.result_package_id = package
         return package, picking
 

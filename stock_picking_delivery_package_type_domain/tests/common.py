@@ -6,44 +6,43 @@ from odoo.fields import Command
 
 
 class CommonChooseDeliveryPackage:
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.loader = FakeModelLoader(cls.env, cls.__module__)
-        cls.loader.backup_registry()
+    def setUp(self):
+        super().setUp()
+        self.loader = FakeModelLoader(self.env, self.__module__)
+        self.loader.backup_registry()
 
         from .models.test import DeliveryCarrier, StockPackageType
 
-        cls.loader.update_registry((DeliveryCarrier, StockPackageType))
+        self.loader.update_registry((DeliveryCarrier, StockPackageType))
 
-        cls.delivery_obj = cls.env["delivery.carrier"]
-        cls.package_type_obj = cls.env["stock.package.type"]
-        cls.package_type = cls.package_type_obj.create(
+        self.delivery_obj = self.env["delivery.carrier"]
+        self.package_type_obj = self.env["stock.package.type"]
+        self.package_type = self.package_type_obj.create(
             {
                 "name": "Type Test",
                 "package_carrier_type": "test",
             }
         )
-        cls.product_delivery = cls.env["product.product"].create(
+        self.product_delivery = self.env["product.product"].create(
             {
                 "name": "Delivery Product",
                 "type": "service",
             }
         )
-        cls.delivery = cls.delivery_obj.create(
+        self.delivery = self.delivery_obj.create(
             {
                 "name": "Test",
                 "delivery_type": "test",
-                "product_id": cls.product_delivery.id,
+                "product_id": self.product_delivery.id,
             }
         )
-        cls.partner = cls.env["res.partner"].create(
+        self.partner = self.env["res.partner"].create(
             {
                 "name": "Test Partner",
             }
         )
 
-        cls.product = cls.env["product.product"].create(
+        self.product = self.env["product.product"].create(
             {
                 "name": "Test Product",
                 "type": "consu",
@@ -51,33 +50,31 @@ class CommonChooseDeliveryPackage:
             }
         )
 
-        cls.env["stock.quant"].with_context(inventory_mode=True).create(
+        self.env["stock.quant"].with_context(inventory_mode=True).create(
             {
-                "product_id": cls.product.id,
-                "location_id": cls.env.ref("stock.stock_location_stock").id,
+                "product_id": self.product.id,
+                "location_id": self.env.ref("stock.stock_location_stock").id,
                 "inventory_quantity": 10.0,
             }
         )._apply_inventory()
 
-    @classmethod
-    def _create_sale(cls):
-        cls.sale = cls.env["sale.order"].create(
+    def _create_sale(self):
+        self.sale = self.env["sale.order"].create(
             {
-                "partner_id": cls.partner.id,
-                "carrier_id": cls.delivery.id,
+                "partner_id": self.partner.id,
+                "carrier_id": self.delivery.id,
                 "order_line": [
                     Command.create(
                         {
-                            "product_id": cls.product.id,
+                            "product_id": self.product.id,
                             "product_uom_qty": 5.0,
                         }
                     )
                 ],
             }
         )
-        return cls.sale
+        return self.sale
 
-    @classmethod
-    def tearDownClass(cls):
-        cls.loader.restore_registry()
-        super().tearDownClass()
+    def tearDown(self):
+        self.loader.restore_registry()
+        super().tearDown()
